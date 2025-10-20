@@ -388,7 +388,7 @@ function playLanguage(code){
   }
   currentCode = code;
   audio.pause();
-  audio.src = `audio/${code}.mp3`;
+  audio.src = `translation-channel-tester/audio/${code}.mp3`;
   audio.currentTime = 0;
   audio.play().then(()=> setPlayingUI(code))
               .catch(()=> setPlayingUI(code)); // UI still updates; error toast handled by onerror
