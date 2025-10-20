@@ -1,2 +1,442 @@
-# Translation-channel-tester
-A simple webpage to test interpretation channels with distinct languages
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Language Audio Grid</title>
+<style>
+  :root{
+    --bg:#0f172a;            /* slate-900 */
+    --panel:#111827;         /* gray-900 */
+    --panel-2:#1f2937;       /* gray-800 */
+    --text:#e5e7eb;          /* gray-200 */
+    --muted:#9ca3af;         /* gray-400 */
+    --accent:#60a5fa;        /* blue-400 */
+    --playing:#ef4444;       /* red-500 */
+    --ring:#374151;          /* gray-700 */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    background:linear-gradient(180deg,#0b1222 0%, var(--bg) 100%);
+    color:var(--text);
+  }
+  .wrap{
+    max-width:1200px;
+    margin:24px auto 64px;
+    padding:0 16px;
+  }
+
+  /* Header */
+  h1{
+    margin:0 0 12px;
+    font-size:24px;
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+  .topbar{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .search{
+    position:relative;
+    flex:1 1 360px;
+  }
+  .search input{
+    width:100%;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid var(--ring);
+    outline:none;
+  }
+  .now-playing{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--panel);
+    border:1px solid var(--ring);
+    padding:10px 12px;
+    border-radius:10px;
+    min-height:44px;
+  }
+  .now-playing .badge{
+    font-weight:700;
+    opacity:.9;
+    background:var(--panel-2);
+    padding:4px 8px;
+    border-radius:7px;
+    border:1px solid var(--ring);
+  }
+  .btn{
+    cursor:pointer;
+    border:1px solid var(--ring);
+    background:var(--panel-2);
+    color:var(--text);
+    border-radius:10px;
+    padding:8px 12px;
+    transition:transform .02s ease-in;
+  }
+  .btn:active{ transform:scale(.98) }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed }
+
+  /* Section (continent) */
+  .section{
+    margin-top:18px;
+  }
+  .sect-title{
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:.6px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:8px 0 12px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0,1fr));
+    gap:14px;
+  }
+  @media (max-width:1000px){
+    .grid{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+  }
+  @media (max-width:720px){
+    .grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+  }
+  @media (max-width:460px){
+    .grid{ grid-template-columns:repeat(1, minmax(0,1fr)); }
+  }
+
+  /* Language card like your screenshot */
+  .card{
+    user-select:none;
+    cursor:pointer;
+    background:linear-gradient(180deg, #0f172a 0%, #0b1325 100%);
+    border:1px solid var(--ring);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 20px 40px rgba(0,0,0,.25);
+    transition:border-color .12s ease, outline-color .12s ease, box-shadow .12s ease;
+    outline:2px solid transparent;
+  }
+  .card:hover{ border-color:#4b5563; }
+  .card.playing{
+    outline-color:var(--playing);
+    border-color:var(--playing);
+    box-shadow:0 0 0 1px rgba(239,68,68,.25), 0 18px 40px rgba(239,68,68,.10);
+  }
+  .code{
+    font-size:14px;
+    font-weight:800;
+    color:#9aa6b2;
+    letter-spacing:.8px;
+    margin-bottom:6px;
+  }
+  .name{
+    font-size:15px;
+    font-weight:600;
+  }
+  .native{
+    font-size:13px;
+    color:#b6c0cc;
+    margin-top:2px;
+  }
+
+  /* Toast */
+  .toast{
+    position:fixed;
+    top:10px;
+    right:10px;
+    background:#1f2937;
+    color:#fecaca;
+    border:1px solid #7f1d1d;
+    padding:10px 12px;
+    border-radius:10px;
+    font-size:14px;
+    max-width:360px;
+    opacity:0;
+    transform:translateY(-8px);
+    transition:opacity .18s ease, transform .18s ease;
+    z-index:50;
+    pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .muted{ color:var(--muted) }
+  a.inline{ color:var(--accent); text-decoration:none }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Language Audio Grid</h1>
+
+    <div class="topbar">
+      <div class="search">
+        <input id="search" list="lang-list" placeholder="Type a language or code (e.g., en, ja, nl)…" />
+        <datalist id="lang-list"></datalist>
+      </div>
+
+      <div class="now-playing" id="now">
+        <span class="muted">Now playing:</span>
+        <span class="badge" id="nowBadge">—</span>
+        <button class="btn" id="toggleBtn" disabled>Play</button>
+      </div>
+    </div>
+
+    <div id="container"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* --------------------- Data --------------------- */
+/* Put audio files in ./audio/<code>.mp3  (lowercase) */
+const LANGS = [
+  /* Europe */
+  {code:'en', name:'English', native:'English', continent:'Europe'},
+  {code:'nl', name:'Dutch', native:'Nederlands', continent:'Europe'},
+  {code:'fr', name:'French', native:'Français', continent:'Europe'},
+  {code:'de', name:'German', native:'Deutsch', continent:'Europe'},
+  {code:'es', name:'Spanish', native:'Español', continent:'Europe'},
+  {code:'it', name:'Italian', native:'Italiano', continent:'Europe'},
+  {code:'pt', name:'Portuguese', native:'Português', continent:'Europe'},
+  {code:'sv', name:'Swedish', native:'Svenska', continent:'Europe'},
+  {code:'no', name:'Norwegian', native:'Norsk', continent:'Europe'},
+  {code:'da', name:'Danish', native:'Dansk', continent:'Europe'},
+  {code:'fi', name:'Finnish', native:'Suomi', continent:'Europe'},
+  {code:'pl', name:'Polish', native:'Polski', continent:'Europe'},
+  {code:'cs', name:'Czech', native:'Čeština', continent:'Europe'},
+  {code:'sk', name:'Slovak', native:'Slovenčina', continent:'Europe'},
+  {code:'sl', name:'Slovenian', native:'Slovenščina', continent:'Europe'},
+  {code:'hu', name:'Hungarian', native:'Magyar', continent:'Europe'},
+  {code:'ro', name:'Romanian', native:'Română', continent:'Europe'},
+  {code:'bg', name:'Bulgarian', native:'Български', continent:'Europe'},
+  {code:'el', name:'Greek', native:'Ελληνικά', continent:'Europe'},
+  {code:'tr', name:'Turkish', native:'Türkçe', continent:'Europe'},
+  {code:'ru', name:'Russian', native:'Русский', continent:'Europe'},
+  {code:'uk', name:'Ukrainian', native:'Українська', continent:'Europe'},
+  {code:'ga', name:'Irish', native:'Gaeilge', continent:'Europe'},
+  {code:'is', name:'Icelandic', native:'Íslenska', continent:'Europe'},
+  {code:'mt', name:'Maltese', native:'Malti', continent:'Europe'},
+  {code:'et', name:'Estonian', native:'Eesti', continent:'Europe'},
+  {code:'lv', name:'Latvian', native:'Latviešu', continent:'Europe'},
+  {code:'lt', name:'Lithuanian', native:'Lietuvių', continent:'Europe'},
+  {code:'sr', name:'Serbian', native:'Српски', continent:'Europe'},
+  {code:'hr', name:'Croatian', native:'Hrvatski', continent:'Europe'},
+  {code:'bs', name:'Bosnian', native:'Bosanski', continent:'Europe'},
+  {code:'mk', name:'Macedonian', native:'Македонски', continent:'Europe'},
+
+  /* Asia */
+  {code:'zh', name:'Chinese', native:'中文', continent:'Asia'},
+  {code:'ja', name:'Japanese', native:'日本語', continent:'Asia'},
+  {code:'ko', name:'Korean', native:'한국어', continent:'Asia'},
+  {code:'vi', name:'Vietnamese', native:'Tiếng Việt', continent:'Asia'},
+  {code:'id', name:'Indonesian', native:'Bahasa Indonesia', continent:'Asia'},
+  {code:'ms', name:'Malay', native:'Bahasa Melayu', continent:'Asia'},
+  {code:'hi', name:'Hindi', native:'हिंदी', continent:'Asia'},
+  {code:'ur', name:'Urdu', native:'اردو', continent:'Asia'},
+  {code:'bn', name:'Bengali', native:'বাংলা', continent:'Asia'},
+  {code:'ta', name:'Tamil', native:'தமிழ்', continent:'Asia'},
+  {code:'te', name:'Telugu', native:'తెలుగు', continent:'Asia'},
+  {code:'fa', name:'Persian', native:'فارسی', continent:'Asia'},
+  {code:'he', name:'Hebrew', native:'עברית', continent:'Asia'},
+  {code:'ar', name:'Arabic', native:'العربية', continent:'Asia'},
+
+  /* Africa */
+  {code:'taq', name:'Tamazight (Berber)', native:'Tamaziɣt', continent:'Africa'},
+
+  /* Other */
+  {code:'1', name:'Channel 1', native:'Channel 1', continent:'Other'},
+
+  /* Add Americas/Oceania as needed */
+];
+
+const CONTINENT_ORDER = ['Europe','Asia','Africa','Americas','Oceania','Other'];
+
+/* --------------------- DOM build --------------------- */
+const container = document.getElementById('container');
+const datalist  = document.getElementById('lang-list');
+
+function groupByContinent(langs){
+  const map = new Map();
+  for (const l of langs){
+    const c = l.continent || 'Other';
+    if(!map.has(c)) map.set(c, []);
+    map.get(c).push(l);
+  }
+  return map;
+}
+
+function buildGrid(){
+  const groups = groupByContinent(LANGS);
+  container.innerHTML = '';
+  for (const c of CONTINENT_ORDER){
+    if(!groups.has(c)) continue;
+    const sect = document.createElement('section');
+    sect.className = 'section';
+
+    const title = document.createElement('div');
+    title.className = 'sect-title';
+    title.textContent = c;
+    sect.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+
+    for (const lang of groups.get(c)){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.code = lang.code;
+
+      const code = document.createElement('div');
+      code.className = 'code';
+      code.textContent = lang.code.toUpperCase();
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = lang.name;
+      const native = document.createElement('div');
+      native.className = 'native';
+      native.textContent = lang.native;
+
+      card.appendChild(code);
+      card.appendChild(name);
+      card.appendChild(native);
+
+      card.addEventListener('click', () => playLanguage(lang.code));
+      grid.appendChild(card);
+    }
+
+    sect.appendChild(grid);
+    container.appendChild(sect);
+  }
+
+  // Build datalist options for search
+  datalist.innerHTML = '';
+  for (const l of LANGS){
+    const opt = document.createElement('option');
+    opt.value = `${l.code} — ${l.name}`;
+    datalist.appendChild(opt);
+  }
+}
+buildGrid();
+
+/* --------------------- Player logic --------------------- */
+const audio = new Audio();
+audio.loop = true;
+
+const nowBadge = document.getElementById('nowBadge');
+const toggleBtn = document.getElementById('toggleBtn');
+const toast = document.getElementById('toast');
+let currentCode = null;
+
+audio.addEventListener('error', () => {
+  showToast(`Could not play “${currentCode}”. Check that audio/${currentCode}.mp3 exists.`);
+  clearPlayingUI();
+});
+
+toggleBtn.addEventListener('click', () => {
+  if(!currentCode) return;
+  if(audio.paused){ audio.play().catch(()=>{}); toggleBtn.textContent='Pause'; }
+  else { audio.pause(); toggleBtn.textContent='Play'; }
+});
+
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), 3500);
+}
+
+function setPlayingUI(code){
+  // clear all
+  for (const el of document.querySelectorAll('.card.playing')) el.classList.remove('playing');
+  const el = document.querySelector(`.card[data-code="${code}"]`);
+  if(el) el.classList.add('playing');
+  const l = LANGS.find(x => x.code === code);
+  nowBadge.textContent = l ? `${code.toUpperCase()} · ${l.name}` : code.toUpperCase();
+  toggleBtn.disabled = false;
+  toggleBtn.textContent = audio.paused ? 'Play' : 'Pause';
+}
+
+function clearPlayingUI(){
+  for (const el of document.querySelectorAll('.card.playing')) el.classList.remove('playing');
+  nowBadge.textContent = '—';
+  toggleBtn.disabled = true;
+  toggleBtn.textContent = 'Play';
+  currentCode = null;
+}
+
+function playLanguage(code){
+  code = (code || '').toLowerCase().trim();
+  const exists = LANGS.some(l => l.code === code);
+  if(!exists){
+    showToast(`Unknown code “${code}”.`);
+    return;
+  }
+  if(currentCode === code){
+    // Toggle
+    if(audio.paused){ audio.play().catch(()=>{}); }
+    else { audio.pause(); }
+    setPlayingUI(code);
+    return;
+  }
+  currentCode = code;
+  audio.pause();
+  audio.src = `audio/${code}.mp3`;
+  audio.currentTime = 0;
+  audio.play().then(()=> setPlayingUI(code))
+              .catch(()=> setPlayingUI(code)); // UI still updates; error toast handled by onerror
+}
+
+/* --------------------- Search behavior --------------------- */
+const search = document.getElementById('search');
+search.addEventListener('focus', () => {
+  search.value = '';
+});
+search.addEventListener('change', onSearch);
+search.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ onSearch(); }
+});
+function onSearch(){
+  const val = (search.value || '').trim();
+  if(!val) return;
+
+  // Accept "en", "EN", "en — English", or a language name
+  let code = val.toLowerCase();
+  // If input looks like "xx — ..." keep the left part
+  if(code.includes('—')) code = code.split('—')[0].trim();
+  // If it’s a language name, map to code
+  const byName = LANGS.find(l =>
+    l.name.toLowerCase() === code || l.native.toLowerCase() === code
+  );
+  if(byName) code = byName.code;
+
+  // If user typed just 2 letters and there’s a match, use it
+  if(code.length === 2 && LANGS.some(l=>l.code===code)){
+    playLanguage(code);
+    return;
+  }
+
+  // Try startsWith on name/code
+  const maybe = LANGS.find(l =>
+    l.code.startsWith(code) ||
+    l.name.toLowerCase().startsWith(code) ||
+    l.native.toLowerCase().startsWith(code)
+  );
+  if(maybe){ playLanguage(maybe.code); return; }
+
+  showToast(`No match for “${val}”.`);
+}
+
+/* Optional: start with nothing selected */
+/* If you want a default, call playLanguage('en') here. */
+
+</script>
+</body>
+</html>
