@@ -336,7 +336,7 @@ const toast = document.getElementById('toast');
 let currentCode = null;
 
 audio.addEventListener('error', () => {
-  showToast(`Could not play “${currentCode}”. Check that translation-channel-tester/audio/${currentCode}.mp3 exists.`);
+  showToast(`Could not play “${currentCode}”. Check that audio/${currentCode}.mp3 exists.`);
   clearPlayingUI();
 });
 
@@ -388,7 +388,7 @@ function playLanguage(code){
   }
   currentCode = code;
   audio.pause();
-  audio.src = `translation-channel-tester/audio/${code}.mp3`;
+  audio.src = `audio/${code}.mp3`;
   audio.currentTime = 0;
   audio.play().then(()=> setPlayingUI(code))
               .catch(()=> setPlayingUI(code)); // UI still updates; error toast handled by onerror
