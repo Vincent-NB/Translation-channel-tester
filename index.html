@@ -196,7 +196,7 @@
 
 <script>
 /* --------------------- Data --------------------- */
-/* Put audio files in ./audio/<code>.mp3  (lowercase) */
+/* Put audio files in .translation-channel-tester/audio/<code>.mp3  (lowercase) */
 const LANGS = [
   /* Europe */
   {code:'en', name:'English', native:'English', continent:'Europe'},
@@ -336,7 +336,7 @@ const toast = document.getElementById('toast');
 let currentCode = null;
 
 audio.addEventListener('error', () => {
-  showToast(`Could not play “${currentCode}”. Check that audio/${currentCode}.mp3 exists.`);
+  showToast(`Could not play “${currentCode}”. Check that translation-channel-tester/audio/${currentCode}.mp3 exists.`);
   clearPlayingUI();
 });
 
